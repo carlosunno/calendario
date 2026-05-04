@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@layer base {
+  html {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@layer utilities {
+  .animate-slide-up {
+    animation: slideUp 0.25s ease-out;
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .safe-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  /* FullCalendar overrides */
+  .fc .fc-toolbar {
+    @apply flex-wrap gap-2;
+  }
+
+  .fc .fc-button {
+    @apply bg-white border border-gray-200 text-gray-700 text-sm font-medium rounded-lg px-3 py-1.5 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 transition-colors;
+    box-shadow: none !important;
+  }
+
+  .fc .fc-button-primary:not(:disabled).fc-button-active,
+  .fc .fc-button-primary:not(:disabled):active {
+    @apply bg-blue-600 border-blue-600 text-white;
+  }
+
+  .fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+    @apply bg-blue-600 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm font-semibold;
+  }
+
+  .fc .fc-daygrid-day-number {
+    @apply text-sm text-gray-700 p-1;
+  }
+
+  .fc-event {
+    @apply rounded-md text-xs font-medium border-0 cursor-pointer;
+  }
+
+  .fc .fc-col-header-cell-cushion {
+    @apply text-xs font-semibold text-gray-500 uppercase tracking-wide py-2;
+  }
+}
