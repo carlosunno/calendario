@@ -17,6 +17,10 @@ function getParentForAlternatingWeek(rule: RegimeRule, date: Date): string | nul
   if (!rule.weekAParentId || !rule.weekBParentId || !rule.referenceDate) return null
   const ref = parseISO(rule.referenceDate)
   const weeksDiff = differenceInCalendarWeeks(startOfDay(date), startOfDay(ref), { weekStartsOn: 1 })
+  // If both IDs are the same the second parent hasn't been linked yet — show weekA only on its weeks
+  if (rule.weekAParentId === rule.weekBParentId) {
+    return weeksDiff % 2 === 0 ? rule.weekAParentId : null
+  }
   return weeksDiff % 2 === 0 ? rule.weekAParentId : rule.weekBParentId
 }
 

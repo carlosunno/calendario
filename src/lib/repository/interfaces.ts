@@ -18,6 +18,7 @@ export interface IAuthRepository {
   updateProfile(userId: string, updates: Partial<Profile>): Promise<Profile>
   setSession(user: Profile): void
   getAllUsers(): Array<Profile & { email: string; password: string }>
+  deleteUser(userId: string): Promise<void>
 }
 
 export interface IFamilyRepository {

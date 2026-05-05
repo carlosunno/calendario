@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { OnboardingLayout } from '@/layouts/OnboardingLayout'
 import { useAuthStore } from '@/store/authStore'
 import { useAppStore } from '@/store/appStore'
-import { familyRepo } from '@/lib/repository'
+import { familyRepo, childRepo } from '@/lib/repository'
 import { FamilyStep } from './FamilyStep'
 import { ChildrenStep } from './ChildrenStep'
 import { RegimeStep } from './RegimeStep'
@@ -38,6 +38,21 @@ export function OnboardingWizard() {
   async function handleFamilyDone(family: Family, children: Child[]) {
     setData((d) => ({ ...d, family, children }))
     next()
+  }
+
+  async function handleJoinDone(family: Family) {
+    setLoading(true)
+    try {
+      const members = await familyRepo.getMembers(family.id)
+      const childrenList = await childRepo.getChildren(family.id)
+      setActiveFamily(family, members, childrenList)
+      setOnboardingComplete(true)
+      navigate('/dashboard', { replace: true })
+    } catch {
+      showToast('Erro ao aderir à família', 'error')
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleChildrenDone(children: Child[]) {
@@ -78,6 +93,7 @@ export function OnboardingWizard() {
         <FamilyStep
           userId={user!.id}
           onDone={handleFamilyDone}
+          onJoinDone={handleJoinDone}
         />
       )}
       {step === 1 && data.family && (

@@ -68,6 +68,13 @@ export class LocalAuthRepo implements IAuthRepository {
     }))
   }
 
+  async deleteUser(userId: string): Promise<void> {
+    const users = lsGet<Profile & { email: string }>(USERS_KEY)
+    localStorage.setItem(USERS_KEY, JSON.stringify(users.filter((u) => u.id !== userId)))
+    const passwords = lsGet<{ id: string; userId: string; hash: string }>(PASSWORDS_KEY)
+    localStorage.setItem(PASSWORDS_KEY, JSON.stringify(passwords.filter((p) => p.userId !== userId)))
+  }
+
   getCurrentUser(): Profile | null {
     try {
       const raw = localStorage.getItem(SESSION_KEY)
