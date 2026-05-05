@@ -55,6 +55,19 @@ export class LocalAuthRepo implements IAuthRepository {
     localStorage.removeItem(SESSION_KEY)
   }
 
+  setSession(user: Profile): void {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(user))
+  }
+
+  getAllUsers(): Array<Profile & { email: string; password: string }> {
+    const users = lsGet<Profile & { email: string }>(USERS_KEY)
+    const passwords = lsGet<{ id: string; userId: string; hash: string }>(PASSWORDS_KEY)
+    return users.map((u) => ({
+      ...u,
+      password: passwords.find((p) => p.userId === u.id)?.hash ?? '',
+    }))
+  }
+
   getCurrentUser(): Profile | null {
     try {
       const raw = localStorage.getItem(SESSION_KEY)

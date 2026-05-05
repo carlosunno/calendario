@@ -16,6 +16,8 @@ export interface IAuthRepository {
   logout(): Promise<void>
   getCurrentUser(): Profile | null
   updateProfile(userId: string, updates: Partial<Profile>): Promise<Profile>
+  setSession(user: Profile): void
+  getAllUsers(): Array<Profile & { email: string; password: string }>
 }
 
 export interface IFamilyRepository {

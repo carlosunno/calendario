@@ -17,6 +17,7 @@ import { VacationNewPage } from '@/features/vacations/pages/VacationNewPage'
 import { FamilyPage } from '@/features/family/pages/FamilyPage'
 import { RegimeUpdatePage } from '@/features/family/pages/RegimeUpdatePage'
 import { SettingsPage } from '@/features/settings/pages/SettingsPage'
+import { AdminPage } from '@/features/admin/pages/AdminPage'
 
 function Protected({ children }: { children: React.ReactNode }) {
   return (
@@ -51,5 +52,6 @@ export const router = createBrowserRouter([
   { path: '/family', element: <Protected><FamilyPage /></Protected> },
   { path: '/family/regimes/:id/actualizar', element: <Protected><RegimeUpdatePage /></Protected> },
   { path: '/settings', element: <Protected><SettingsPage /></Protected> },
+  { path: '/admin', element: <Protected><AdminPage /></Protected> },
   { path: '*', element: <Navigate to="/dashboard" replace /> },
 ])
