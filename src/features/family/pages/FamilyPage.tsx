@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/store/appStore'
 import { useAuthStore } from '@/store/authStore'
 import { familyRepo, regimeRepo } from '@/lib/repository'
@@ -30,6 +31,7 @@ export function FamilyPage() {
   const [inviteRole, setInviteRole] = useState<'pai' | 'mae' | 'avo' | 'cuidador'>('mae')
   const [inviting, setInviting] = useState(false)
   const [tab, setTab] = useState<'membros' | 'filhos' | 'regimes'>('membros')
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (!activeFamily) return
@@ -234,6 +236,15 @@ export function FamilyPage() {
                     Desde {format(new Date(regime.effectiveFrom + 'T12:00:00'), 'dd/MM/yyyy')}
                     {regime.effectiveUntil && ` até ${format(new Date(regime.effectiveUntil + 'T12:00:00'), 'dd/MM/yyyy')}`}
                   </p>
+                  {regime.isActive && (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/family/regimes/${regime.id}/actualizar`)}
+                      className="mt-2 text-xs text-blue-600 font-medium hover:text-blue-700 transition-colors"
+                    >
+                      Actualizar regime →
+                    </button>
+                  )}
                 </Card>
               )
             })

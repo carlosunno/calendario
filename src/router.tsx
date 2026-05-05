@@ -15,6 +15,7 @@ import { NoteDetailPage } from '@/features/notes/pages/NoteDetailPage'
 import { VacationsPage } from '@/features/vacations/pages/VacationsPage'
 import { VacationNewPage } from '@/features/vacations/pages/VacationNewPage'
 import { FamilyPage } from '@/features/family/pages/FamilyPage'
+import { RegimeUpdatePage } from '@/features/family/pages/RegimeUpdatePage'
 import { SettingsPage } from '@/features/settings/pages/SettingsPage'
 
 function Protected({ children }: { children: React.ReactNode }) {
@@ -48,6 +49,7 @@ export const router = createBrowserRouter([
   { path: '/vacations', element: <Protected><VacationsPage /></Protected> },
   { path: '/vacations/new', element: <Protected><VacationNewPage /></Protected> },
   { path: '/family', element: <Protected><FamilyPage /></Protected> },
+  { path: '/family/regimes/:id/actualizar', element: <Protected><RegimeUpdatePage /></Protected> },
   { path: '/settings', element: <Protected><SettingsPage /></Protected> },
   { path: '*', element: <Navigate to="/dashboard" replace /> },
 ])

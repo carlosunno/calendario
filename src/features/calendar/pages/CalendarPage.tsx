@@ -175,7 +175,7 @@ export function CalendarPage() {
           plugins={[dayGridPlugin, interactionPlugin, listPlugin]}
           initialView="dayGridMonth"
           headerToolbar={{ left: 'prev', center: 'title', right: 'next' }}
-          footerToolbar={{ center: 'dayGridMonth,listWeek' }}
+          footerToolbar={{ center: 'dayGridMonth,dayGridWeek,listWeek' }}
           locale="pt"
           firstDay={1}
           events={calendarEvents}
@@ -184,7 +184,7 @@ export function CalendarPage() {
           height="auto"
           dayMaxEvents={2}
           eventDisplay="block"
-          buttonText={{ dayGridMonth: 'Mês', listWeek: 'Lista' }}
+          buttonText={{ dayGridMonth: 'Mês', dayGridWeek: 'Semana', listWeek: 'Lista' }}
         />
       </div>
 
