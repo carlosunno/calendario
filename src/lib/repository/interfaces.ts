@@ -3,6 +3,7 @@ import type {
   CalendarNote,
   Child,
   CustodyRegime,
+  Expense,
   ExceptionRequest,
   Family,
   FamilyMember,
@@ -74,4 +75,12 @@ export interface IVacationRepository {
   createVacation(data: Omit<VacationPeriod, 'id' | 'createdAt' | 'updatedAt'>): Promise<VacationPeriod>
   updateVacation(id: string, data: Partial<VacationPeriod>): Promise<VacationPeriod>
   deleteVacation(id: string): Promise<void>
+}
+
+export interface IExpenseRepository {
+  getExpenses(familyId: string): Promise<Expense[]>
+  getExpense(id: string): Promise<Expense | null>
+  createExpense(data: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>): Promise<Expense>
+  updateExpense(id: string, data: Partial<Expense>): Promise<Expense>
+  deleteExpense(id: string): Promise<void>
 }

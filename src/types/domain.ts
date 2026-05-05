@@ -187,6 +187,30 @@ export interface PublicHoliday {
   regionCode?: string
 }
 
+export type ExpenseCategory = 'saude' | 'escola' | 'desporto' | 'alimentacao' | 'vestuario' | 'lazer' | 'outro'
+export type ExpenseSplit = 'total' | 'partilhada'
+export type ExpenseStatus = 'pendente' | 'paga' | 'aguarda_confirmacao' | 'confirmada' | 'disputada'
+
+export interface Expense {
+  id: string
+  familyId: string
+  childId?: string
+  description: string
+  amount: number
+  date: string
+  category: ExpenseCategory
+  paidBy: string
+  splitType: ExpenseSplit
+  // splitRatio: fraction the OTHER parent owes (0.5 = 50/50, 1.0 = other pays 100%)
+  splitRatio: number
+  status: ExpenseStatus
+  confirmedBy?: string
+  confirmedAt?: string
+  notes?: string
+  createdAt: string
+  updatedAt: string
+}
+
 // View models (enriched for UI)
 export interface EnrichedCalendarEvent extends CalendarEvent {
   parentName: string

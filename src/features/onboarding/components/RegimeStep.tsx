@@ -4,7 +4,12 @@ import { Button } from '@/ui/Button'
 import { Select } from '@/ui/Input'
 import type { Child, CustodyRegime, Family, FamilyMember, RegimeRule } from '@/types/domain'
 import { showToast } from '@/ui/Toast'
-import { format } from 'date-fns'
+import { format, addDays } from 'date-fns'
+
+function mostRecentSwapDate(swapDay: number, fromDate: Date): string {
+  const daysBack = (fromDate.getDay() - swapDay + 7) % 7
+  return format(addDays(fromDate, -daysBack), 'yyyy-MM-dd')
+}
 
 const WEEK_DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 const WEEK_DAYS_FULL = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
@@ -133,7 +138,7 @@ export function RegimeStep({ family, children, userId, onDone, onBack }: RegimeS
           swapTime: '18:00',
           weekAParentId,
           weekBParentId,
-          referenceDate: format(new Date(), 'yyyy-MM-dd'),
+          referenceDate: mostRecentSwapDate(swapDay, new Date()),
         })
 
         // Add fixed day overrides if configured

@@ -1,6 +1,6 @@
-import type { AuditLogEntry, CalendarNote, ExceptionRequest, VacationPeriod } from '@/types/domain'
-import type { IExceptionRepository, INoteRepository, IVacationRepository } from '../interfaces'
-import { genId, lsAdd, lsGet, lsGetOne, lsUpdate, now } from './LocalStorage'
+import type { AuditLogEntry, CalendarNote, Expense, ExceptionRequest, VacationPeriod } from '@/types/domain'
+import type { IExceptionRepository, IExpenseRepository, INoteRepository, IVacationRepository } from '../interfaces'
+import { genId, lsAdd, lsGet, lsGetOne, lsUpdate, lsDelete, now } from './LocalStorage'
 
 const EXCEPTIONS_KEY = 'cal_exceptions'
 const AUDIT_KEY = 'cal_audit'
@@ -94,5 +94,32 @@ export class LocalVacationRepo implements IVacationRepository {
   async deleteVacation(id: string): Promise<void> {
     const vacations = lsGet<VacationPeriod>(VACATIONS_KEY).filter((v) => v.id !== id)
     localStorage.setItem(VACATIONS_KEY, JSON.stringify(vacations))
+  }
+}
+
+const EXPENSES_KEY = 'cal_expenses'
+
+export class LocalExpenseRepo implements IExpenseRepository {
+  async getExpenses(familyId: string): Promise<Expense[]> {
+    return lsGet<Expense>(EXPENSES_KEY)
+      .filter((e) => e.familyId === familyId)
+      .sort((a, b) => b.date.localeCompare(a.date))
+  }
+
+  async getExpense(id: string): Promise<Expense | null> {
+    return lsGetOne<Expense>(EXPENSES_KEY, id)
+  }
+
+  async createExpense(data: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>): Promise<Expense> {
+    const expense: Expense = { ...data, id: genId(), createdAt: now(), updatedAt: now() }
+    return lsAdd(EXPENSES_KEY, expense)
+  }
+
+  async updateExpense(id: string, data: Partial<Expense>): Promise<Expense> {
+    return lsUpdate<Expense>(EXPENSES_KEY, id, { ...data, updatedAt: now() })
+  }
+
+  async deleteExpense(id: string): Promise<void> {
+    lsDelete(EXPENSES_KEY, id)
   }
 }

@@ -1,21 +1,26 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { format, addDays } from 'date-fns'
+import { Link, useNavigate } from 'react-router-dom'
+import { format, addDays, isSameDay } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useAppStore } from '@/store/appStore'
 import { useAuthStore } from '@/store/authStore'
-import { regimeRepo, exceptionRepo } from '@/lib/repository'
+import { regimeRepo, exceptionRepo, noteRepo, vacationRepo } from '@/lib/repository'
 import { getParentForDate } from '@/lib/schedule/computeSchedule'
 import { Card, CardHeader, CardTitle } from '@/ui/Card'
 import { Badge, StatusBadge } from '@/ui/Badge'
 import { Avatar } from '@/ui/Avatar'
-import type { CustodyRegime, ExceptionRequest } from '@/types/domain'
+import type { CalendarNote, CustodyRegime, ExceptionRequest, VacationPeriod } from '@/types/domain'
+
+const DAY_ABBR = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
 export function DashboardPage() {
   const { activeFamily, activeFamilyMembers, children } = useAppStore()
   const { user } = useAuthStore()
+  const navigate = useNavigate()
   const [regimes, setRegimes] = useState<CustodyRegime[]>([])
   const [pendingExceptions, setPendingExceptions] = useState<ExceptionRequest[]>([])
+  const [notes, setNotes] = useState<CalendarNote[]>([])
+  const [vacations, setVacations] = useState<VacationPeriod[]>([])
   const [loading, setLoading] = useState(true)
   const today = new Date()
 
@@ -24,21 +29,23 @@ export function DashboardPage() {
     Promise.all([
       regimeRepo.getRegimes(activeFamily.id),
       exceptionRepo.getExceptions(activeFamily.id),
-    ]).then(([r, e]) => {
+      noteRepo.getNotes(activeFamily.id),
+      vacationRepo.getVacations(activeFamily.id),
+    ]).then(([r, e, n, v]) => {
       setRegimes(r)
       setPendingExceptions(e.filter((ex) => ex.status === 'pendente'))
+      setNotes(n)
+      setVacations(v.filter((vac) => vac.status === 'aprovado'))
       setLoading(false)
     })
   }, [activeFamily])
 
-  function getParentName(parentId: string) {
-    const member = activeFamilyMembers.find((m) => m.userId === parentId)
-    return member?.profile.displayName ?? 'Desconhecido'
+  function getParentColor(parentId: string) {
+    return activeFamilyMembers.find((m) => m.userId === parentId)?.color ?? '#e5e7eb'
   }
 
-  function getParentColor(parentId: string) {
-    const member = activeFamilyMembers.find((m) => m.userId === parentId)
-    return member?.color ?? '#6b7280'
+  function getParentName(parentId: string) {
+    return activeFamilyMembers.find((m) => m.userId === parentId)?.profile.displayName ?? 'Desconhecido'
   }
 
   function getNextExchangeInfo(childId: string) {
@@ -51,6 +58,18 @@ export function DashboardPage() {
       }
     }
     return null
+  }
+
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(today, i))
+
+  function hasNote(date: Date) {
+    const ds = format(date, 'yyyy-MM-dd')
+    return notes.some((n) => n.noteDate === ds)
+  }
+
+  function hasVacation(date: Date) {
+    const ds = format(date, 'yyyy-MM-dd')
+    return vacations.some((v) => ds >= v.startDate && ds <= v.endDate)
   }
 
   if (loading) {
@@ -78,7 +97,6 @@ export function DashboardPage() {
         )}
       </div>
 
-      {/* Today's status per child */}
       {children.length === 0 ? (
         <Card>
           <p className="text-sm text-gray-500 text-center py-4">
@@ -87,68 +105,96 @@ export function DashboardPage() {
           </p>
         </Card>
       ) : (
-        children.map((child) => {
-          const parentId = getParentForDate(today, regimes, child.id, pendingExceptions)
-          const nextExchange = getNextExchangeInfo(child.id)
-          const isWithMe = parentId === user?.id
+        <>
+          {children.map((child) => {
+            const parentId = getParentForDate(today, regimes, child.id, pendingExceptions)
+            const nextExchange = getNextExchangeInfo(child.id)
+            const isWithMe = parentId === user?.id
 
-          return (
-            <Card key={child.id}>
-              <div className="flex items-center gap-3">
-                <div
-                  className="h-10 w-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
-                  style={{ backgroundColor: child.color }}
-                >
-                  {child.fullName.charAt(0)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900">{child.fullName}</p>
-                  {parentId ? (
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-xs text-gray-500">Hoje está com</span>
-                      <span
-                        className="text-xs font-semibold"
-                        style={{ color: getParentColor(parentId) }}
-                      >
-                        {isWithMe ? 'si' : getParentName(parentId)}
-                      </span>
-                      {isWithMe && (
-                        <Badge variant="success">Consigo</Badge>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-400 mt-0.5">Regime não configurado</p>
+            return (
+              <Card key={child.id}>
+                <div className="flex items-center gap-3">
+                  <div
+                    className="h-10 w-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+                    style={{ backgroundColor: child.color }}
+                  >
+                    {child.fullName.charAt(0)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900">{child.fullName}</p>
+                    {parentId ? (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-xs text-gray-500">Hoje está com</span>
+                        <span className="text-xs font-semibold" style={{ color: getParentColor(parentId) }}>
+                          {isWithMe ? 'si' : getParentName(parentId)}
+                        </span>
+                        {isWithMe && <Badge variant="success">Consigo</Badge>}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-400 mt-0.5">Regime não configurado</p>
+                    )}
+                  </div>
+                  {parentId && (
+                    <Avatar name={getParentName(parentId)} color={getParentColor(parentId)} size="sm" />
                   )}
                 </div>
-                {parentId && (
-                  <Avatar
-                    name={getParentName(parentId)}
-                    color={getParentColor(parentId)}
-                    size="sm"
-                  />
-                )}
-              </div>
 
-              {nextExchange && (
-                <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <svg className="h-4 w-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                    </svg>
-                    <span className="text-xs text-gray-600">
-                      Próxima troca{' '}
-                      {nextExchange.days === 1 ? 'amanhã' : `em ${nextExchange.days} dias`}
+                {nextExchange && (
+                  <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <svg className="h-4 w-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                      </svg>
+                      <span className="text-xs text-gray-600">
+                        Próxima troca{' '}
+                        {nextExchange.days === 1 ? 'amanhã' : `em ${nextExchange.days} dias`}
+                      </span>
+                    </div>
+                    <span className="text-xs font-medium text-gray-700">
+                      {format(nextExchange.date, 'dd/MM')}
                     </span>
                   </div>
-                  <span className="text-xs font-medium text-gray-700">
-                    {format(nextExchange.date, 'dd/MM')}
-                  </span>
+                )}
+
+                {/* Weekly mini-strip */}
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                  <p className="text-xs text-gray-400 font-medium mb-2">Esta semana</p>
+                  <div className="flex gap-1 justify-between">
+                    {weekDays.map((day) => {
+                      const pid = getParentForDate(day, regimes, child.id, [])
+                      const dotColor = pid ? getParentColor(pid) : '#e5e7eb'
+                      const isToday = isSameDay(day, today)
+                      const note = hasNote(day)
+                      const vacation = hasVacation(day)
+                      return (
+                        <button
+                          key={day.toISOString()}
+                          type="button"
+                          onClick={() => navigate('/calendar')}
+                          className={`flex flex-col items-center gap-0.5 flex-1 py-1 rounded-lg transition-colors ${
+                            isToday ? 'bg-blue-50' : 'hover:bg-gray-50'
+                          }`}
+                        >
+                          <span className={`text-[10px] font-medium ${isToday ? 'text-blue-600' : 'text-gray-400'}`}>
+                            {DAY_ABBR[day.getDay()]}
+                          </span>
+                          <span className={`text-xs font-bold ${isToday ? 'text-blue-700' : 'text-gray-700'}`}>
+                            {format(day, 'd')}
+                          </span>
+                          <div className="h-2.5 w-2.5 rounded-full mt-0.5" style={{ backgroundColor: dotColor }} />
+                          {(note || vacation) && (
+                            <span className="text-[9px] leading-none">{vacation ? '🏖' : '📝'}</span>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
-              )}
-            </Card>
-          )
-        })
+              </Card>
+            )
+          })}
+        </>
       )}
 
       {/* Pending exceptions */}
@@ -169,12 +215,8 @@ export function DashboardPage() {
                   className="flex items-center justify-between p-2 bg-amber-50 rounded-lg"
                 >
                   <div>
-                    <p className="text-sm font-medium text-gray-800">
-                      {exceptionTypeLabel(exc.exceptionType)}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {child?.fullName} · {requester?.profile.displayName}
-                    </p>
+                    <p className="text-sm font-medium text-gray-800">{exceptionTypeLabel(exc.exceptionType)}</p>
+                    <p className="text-xs text-gray-500">{child?.fullName} · {requester?.profile.displayName}</p>
                   </div>
                   <StatusBadge status={exc.status} />
                 </Link>
@@ -217,16 +259,16 @@ export function DashboardPage() {
             </div>
           </Card>
         </Link>
-        <Link to="/notes/new">
+        <Link to="/expenses/new">
           <Card className="hover:shadow-md transition-shadow cursor-pointer">
             <div className="flex flex-col items-center gap-2 py-2">
-              <div className="h-10 w-10 rounded-xl bg-green-100 flex items-center justify-center">
-                <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                <svg className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <p className="text-xs font-medium text-gray-700">Nova Nota</p>
+              <p className="text-xs font-medium text-gray-700">Nova Despesa</p>
             </div>
           </Card>
         </Link>
@@ -250,12 +292,8 @@ export function DashboardPage() {
 
 function exceptionTypeLabel(type: string): string {
   const labels: Record<string, string> = {
-    troca_dia: 'Troca de dia',
-    extensao_tempo: 'Extensão de tempo',
-    ferias: 'Férias',
-    emergencia: 'Emergência',
-    compensacao: 'Compensação',
-    ocasiao_especial: 'Ocasião especial',
+    troca_dia: 'Troca de dia', extensao_tempo: 'Extensão de tempo', ferias: 'Férias',
+    emergencia: 'Emergência', compensacao: 'Compensação', ocasiao_especial: 'Ocasião especial',
     marcacao_ferias: 'Marcação de férias',
   }
   return labels[type] ?? type

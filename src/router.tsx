@@ -18,6 +18,9 @@ import { FamilyPage } from '@/features/family/pages/FamilyPage'
 import { RegimeUpdatePage } from '@/features/family/pages/RegimeUpdatePage'
 import { SettingsPage } from '@/features/settings/pages/SettingsPage'
 import { AdminPage } from '@/features/admin/pages/AdminPage'
+import { ExpensesPage } from '@/features/expenses/pages/ExpensesPage'
+import { ExpenseNewPage } from '@/features/expenses/pages/ExpenseNewPage'
+import { ExpenseDetailPage } from '@/features/expenses/pages/ExpenseDetailPage'
 
 function Protected({ children }: { children: React.ReactNode }) {
   return (
@@ -53,5 +56,8 @@ export const router = createBrowserRouter([
   { path: '/family/regimes/:id/actualizar', element: <Protected><RegimeUpdatePage /></Protected> },
   { path: '/settings', element: <Protected><SettingsPage /></Protected> },
   { path: '/admin', element: <Protected><AdminPage /></Protected> },
+  { path: '/expenses', element: <Protected><ExpensesPage /></Protected> },
+  { path: '/expenses/new', element: <Protected><ExpenseNewPage /></Protected> },
+  { path: '/expenses/:id', element: <Protected><ExpenseDetailPage /></Protected> },
   { path: '*', element: <Navigate to="/dashboard" replace /> },
 ])

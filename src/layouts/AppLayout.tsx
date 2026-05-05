@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/store/appStore'
+import { useAuthStore } from '@/store/authStore'
 
 interface NavItem {
   to: string
@@ -46,18 +47,6 @@ function BellIcon({ filled }: { filled?: boolean }) {
   )
 }
 
-function NoteIcon({ filled }: { filled?: boolean }) {
-  return filled ? (
-    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
-      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a1 1 0 01.707.293l4 4A1 1 0 0119 7v13a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd"/>
-    </svg>
-  ) : (
-    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-    </svg>
-  )
-}
-
 function UsersIcon({ filled }: { filled?: boolean }) {
   return filled ? (
     <svg className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
@@ -70,13 +59,34 @@ function UsersIcon({ filled }: { filled?: boolean }) {
   )
 }
 
+function ExpenseIcon({ filled }: { filled?: boolean }) {
+  return filled ? (
+    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 14.5v.5a1 1 0 11-2 0v-.5A2.5 2.5 0 019.5 14H9a1 1 0 110-2h.5a.5.5 0 000-1h-1a2.5 2.5 0 010-5V5.5a1 1 0 112 0V6h.5a2.5 2.5 0 012.45 2H13a1 1 0 110 2h-.5a.5.5 0 000 1h1a2.5 2.5 0 01.5 4.95V16.5z"/>
+    </svg>
+  ) : (
+    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  )
+}
+
 interface AppLayoutProps {
   children: ReactNode
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const { activeFamily } = useAppStore()
+  const { activeFamily, reset } = useAppStore()
+  const { logout } = useAuthStore()
   const location = useLocation()
+  const navigate = useNavigate()
+
+  async function handleLogout() {
+    await logout()
+    reset()
+    navigate('/login', { replace: true })
+  }
 
   const navItems: NavItem[] = [
     {
@@ -98,10 +108,10 @@ export function AppLayout({ children }: AppLayoutProps) {
       activeIcon: <BellIcon filled />,
     },
     {
-      to: '/notes',
-      label: 'Notas',
-      icon: <NoteIcon />,
-      activeIcon: <NoteIcon filled />,
+      to: '/expenses',
+      label: 'Despesas',
+      icon: <ExpenseIcon />,
+      activeIcon: <ExpenseIcon filled />,
     },
     {
       to: '/family',
@@ -121,13 +131,26 @@ export function AppLayout({ children }: AppLayoutProps) {
             <p className="text-xs text-gray-500">{activeFamily.name}</p>
           )}
         </div>
-        <NavLink to="/settings" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors">
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-          </svg>
-        </NavLink>
+        <div className="flex items-center gap-1">
+          <NavLink to="/settings" className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+          </NavLink>
+          <button
+            type="button"
+            onClick={handleLogout}
+            title="Terminar sessão"
+            className="p-2 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+          </button>
+        </div>
       </header>
 
       {/* Main content */}

@@ -35,6 +35,10 @@ export function AdminPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [creating, setCreating] = useState(false)
+  const [createWithFamily, setCreateWithFamily] = useState(false)
+  const [createFamilyId, setCreateFamilyId] = useState('')
+  const [createRole, setCreateRole] = useState<'pai' | 'mae' | 'avo' | 'cuidador'>('mae')
+  const [allFamilies, setAllFamilies] = useState<{ id: string; name: string }[]>([])
 
   // Join family with code
   const [familyCode, setFamilyCode] = useState('')
@@ -44,6 +48,7 @@ export function AdminPage() {
   function reload() {
     setUsers(authRepo.getAllUsers())
     loadPending()
+    setAllFamilies(lsGet<{ id: string; name: string }>('cal_families'))
   }
 
   useEffect(() => { reload() }, [])
@@ -67,11 +72,40 @@ export function AdminPage() {
     }
     setCreating(true)
     try {
-      await authRepo.register(email.trim(), password.trim(), name.trim())
+      const newUser = await authRepo.register(email.trim(), password.trim(), name.trim())
       if (user) authRepo.setSession(user)
-      setName(''); setEmail(''); setPassword('')
+
+      // Optionally associate to a family immediately
+      if (createWithFamily && createFamilyId) {
+        const members = lsGet<FamilyMember>('cal_members')
+        const colorPalette = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#ec4899']
+        const colorIdx = members.filter((m) => m.familyId === createFamilyId).length
+        const newMember: FamilyMember = {
+          id: genId(),
+          familyId: createFamilyId,
+          userId: newUser.id,
+          profile: { id: newUser.id, displayName: newUser.displayName, email: email.trim(), locale: 'pt-PT', timezone: 'Europe/Lisbon', createdAt: now() },
+          role: createRole,
+          inviteStatus: 'aceite',
+          color: colorPalette[colorIdx % colorPalette.length],
+          canApprove: true, canRequest: true, isViewOnly: false,
+        }
+        members.push(newMember)
+        lsSave('cal_members', members)
+        // Fix regimes where weekBParentId is unset
+        const regimes = lsGet<CustodyRegime>('cal_regimes')
+        lsSave('cal_regimes', regimes.map((r) => {
+          if (r.familyId !== createFamilyId) return r
+          return { ...r, rules: r.rules.map((rule) =>
+            rule.ruleType === 'semanas_alternadas' && rule.weekBParentId === rule.weekAParentId
+              ? { ...rule, weekBParentId: newUser.id } : rule
+          )}
+        }))
+      }
+
+      setName(''); setEmail(''); setPassword(''); setCreateWithFamily(false); setCreateFamilyId('')
       reload()
-      showToast('Utilizador criado.', 'success')
+      showToast('Utilizador criado' + (createWithFamily && createFamilyId ? ' e associado à família.' : '.'), 'success')
     } catch (e) {
       showToast((e as Error).message, 'error')
     } finally {
@@ -309,6 +343,54 @@ export function AdminPage() {
           <Input label="Nome" placeholder="ex: Ana Silva" value={name} onChange={(e) => setName(e.target.value)} />
           <Input type="email" label="Email" placeholder="ana@exemplo.com" value={email} onChange={(e) => setEmail(e.target.value)} />
           <Input type="password" label="Senha" placeholder="qualquer senha" value={password} onChange={(e) => setPassword(e.target.value)} />
+
+          {/* Inline family association */}
+          <button
+            type="button"
+            onClick={() => setCreateWithFamily((v) => !v)}
+            className={`flex items-center justify-between p-3 rounded-xl border-2 transition-colors text-left ${
+              createWithFamily ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            <span className={`text-sm font-medium ${createWithFamily ? 'text-blue-700' : 'text-gray-700'}`}>
+              Associar a uma família
+            </span>
+            <div className={`h-5 w-9 rounded-full transition-colors flex-shrink-0 ${createWithFamily ? 'bg-blue-600' : 'bg-gray-300'}`}>
+              <div className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${createWithFamily ? 'translate-x-4' : 'translate-x-0'}`} />
+            </div>
+          </button>
+
+          {createWithFamily && (
+            <div className="flex flex-col gap-2 pl-1">
+              <div>
+                <p className="text-xs font-medium text-gray-600 mb-1">Família</p>
+                <select
+                  className="w-full h-10 px-3 rounded-xl border border-gray-300 text-sm bg-white"
+                  value={createFamilyId}
+                  onChange={(e) => setCreateFamilyId(e.target.value)}
+                >
+                  <option value="">— Seleccionar família —</option>
+                  {allFamilies.map((f) => (
+                    <option key={f.id} value={f.id}>{f.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-600 mb-1">Papel</p>
+                <select
+                  className="w-full h-10 px-3 rounded-xl border border-gray-300 text-sm bg-white"
+                  value={createRole}
+                  onChange={(e) => setCreateRole(e.target.value as typeof createRole)}
+                >
+                  <option value="mae">Mãe</option>
+                  <option value="pai">Pai</option>
+                  <option value="avo">Avó/Avô</option>
+                  <option value="cuidador">Cuidador</option>
+                </select>
+              </div>
+            </div>
+          )}
+
           <Button type="button" loading={creating} onClick={handleCreate}>
             Criar utilizador
           </Button>

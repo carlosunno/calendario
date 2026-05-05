@@ -1,6 +1,5 @@
 import {
-  addDays,
-  differenceInCalendarWeeks,
+  differenceInDays,
   eachDayOfInterval,
   format,
   isWithinInterval,
@@ -16,7 +15,8 @@ function genId() {
 function getParentForAlternatingWeek(rule: RegimeRule, date: Date): string | null {
   if (!rule.weekAParentId || !rule.weekBParentId || !rule.referenceDate) return null
   const ref = parseISO(rule.referenceDate)
-  const weeksDiff = differenceInCalendarWeeks(startOfDay(date), startOfDay(ref), { weekStartsOn: 1 })
+  const diffDays = differenceInDays(startOfDay(date), startOfDay(ref))
+  const weeksDiff = Math.floor(diffDays / 7)
   // If both IDs are the same the second parent hasn't been linked yet — show weekA only on its weeks
   if (rule.weekAParentId === rule.weekBParentId) {
     return weeksDiff % 2 === 0 ? rule.weekAParentId : null
@@ -59,11 +59,9 @@ function isSwapDay(rules: RegimeRule[], date: Date): boolean {
   return rules.some((r) => {
     if (r.ruleType !== 'semanas_alternadas' || r.swapDay === undefined || !r.referenceDate) return false
     if (date.getDay() !== r.swapDay) return false
-    // Confirm this is actually a transition week
-    const prev = addDays(date, -7)
-    const parentToday = getParentForAlternatingWeek(r, date)
-    const parentPrev = getParentForAlternatingWeek(r, prev)
-    return parentToday !== parentPrev
+    const ref = parseISO(r.referenceDate)
+    const diffDays = differenceInDays(startOfDay(date), startOfDay(ref))
+    return diffDays % 7 === 0
   })
 }
 

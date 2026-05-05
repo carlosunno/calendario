@@ -9,6 +9,11 @@ import { showToast } from '@/ui/Toast'
 import type { CustodyRegime, FamilyMember, RegimeRule } from '@/types/domain'
 import { format, addDays, parseISO } from 'date-fns'
 
+function mostRecentSwapDate(swapDay: number, fromDate: Date): string {
+  const daysBack = (fromDate.getDay() - swapDay + 7) % 7
+  return format(addDays(fromDate, -daysBack), 'yyyy-MM-dd')
+}
+
 const WEEK_DAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 const WEEK_DAYS_FULL = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
 
@@ -157,7 +162,7 @@ export function RegimeUpdatePage() {
           swapTime: '18:00',
           weekAParentId: user.id,
           weekBParentId,
-          referenceDate: effectiveFrom,
+          referenceDate: mostRecentSwapDate(swapDay, parseISO(effectiveFrom)),
         })
         if (hasMixedDays) {
           if (myFixedDays.length > 0) {
