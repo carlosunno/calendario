@@ -207,6 +207,7 @@ export interface Expense {
   confirmedBy?: string
   confirmedAt?: string
   notes?: string
+  receipts?: string[]
   createdAt: string
   updatedAt: string
 }

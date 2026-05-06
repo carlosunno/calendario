@@ -10,9 +10,17 @@ import { useAppStore } from '@/store/appStore'
 import { regimeRepo, exceptionRepo, noteRepo } from '@/lib/repository'
 import { computeSchedule, getParentForDate } from '@/lib/schedule/computeSchedule'
 import { getPortugueseHolidays } from '@/lib/holidays/pt'
-import type { CalendarEvent, CalendarNote, CustodyRegime, ExceptionRequest } from '@/types/domain'
+import type { CalendarNote, CustodyRegime, ExceptionRequest } from '@/types/domain'
 import { Modal } from '@/ui/Modal'
 import { Link, useNavigate } from 'react-router-dom'
+
+function hexToRgba(hex: string, alpha: number): string {
+  if (!hex.startsWith('#') || hex.length !== 7) return hex
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r},${g},${b},${alpha})`
+}
 
 export function CalendarPage() {
   const { activeFamily, activeFamilyMembers, children } = useAppStore()
@@ -46,7 +54,6 @@ export function CalendarPage() {
     return activeFamilyMembers.find((m) => m.userId === parentId)?.profile.displayName ?? 'Desconhecido'
   }
 
-  // holidays for current year and next
   const holidays = useMemo(() => {
     const year = new Date().getFullYear()
     return [...getPortugueseHolidays(year), ...getPortugueseHolidays(year + 1)]
@@ -54,22 +61,18 @@ export function CalendarPage() {
 
   const calendarEvents: EventInput[] = []
 
-  // Holiday events
+  // Background + label events for holidays
   for (const h of holidays) {
     calendarEvents.push({
-      id: `holiday-${h.date}`,
-      title: h.name,
+      id: `holiday-bg-${h.date}`,
       date: h.date,
-      backgroundColor: '#dc2626',
-      borderColor: '#dc2626',
-      textColor: '#fff',
-      allDay: true,
-      extendedProps: { type: 'feriado' },
       display: 'background',
+      backgroundColor: 'rgba(220,38,38,0.08)',
+      allDay: true,
     })
     calendarEvents.push({
       id: `holiday-label-${h.date}`,
-      title: h.name,
+      title: `🎉 ${h.name}`,
       date: h.date,
       backgroundColor: 'transparent',
       borderColor: 'transparent',
@@ -97,31 +100,30 @@ export function CalendarPage() {
     })
 
     for (const ev of events) {
+      // Skip troca marker — custody background already shows the handover day
+      if (ev.eventType === 'troca') continue
+
       const color = ev.isException ? '#8b5cf6' : getParentColor(ev.parentId)
-
-      if (ev.eventType === 'troca') {
-        calendarEvents.push({
-          id: ev.id + '-exchange',
-          title: '↔ Troca',
-          date: ev.eventDate,
-          backgroundColor: '#f59e0b',
-          borderColor: '#f59e0b',
-          textColor: '#fff',
-          allDay: true,
-          extendedProps: { type: 'troca' },
-        })
-        continue
-      }
-
-      const child = children.find((c) => c.id === ev.childId)
       const parentName = ev.isException ? (ev.label ?? 'Excepção') : getParentName(ev.parentId)
+      const child = children.find((c) => c.id === ev.childId)
       const childFirst = child?.fullName.split(' ')[0] ?? ''
+      const initial = parentName.charAt(0).toUpperCase()
 
+      // Full-day background tint
+      calendarEvents.push({
+        id: ev.id + '-bg',
+        date: ev.eventDate,
+        display: 'background',
+        backgroundColor: hexToRgba(color, 0.18),
+        allDay: true,
+      })
+
+      // Foreground label
       calendarEvents.push({
         id: ev.id,
         title: children.length > 1
-          ? `${parentName} · ${childFirst}`
-          : parentName,
+          ? `${initial} ${parentName} · ${childFirst}`
+          : `${initial} ${parentName}`,
         date: ev.eventDate,
         backgroundColor: color,
         borderColor: color,
@@ -165,7 +167,6 @@ export function CalendarPage() {
     ? notes.filter((n) => n.noteDate === selectedDate)
     : []
 
-  // Custody info for selected date
   const custodyForSelectedDate = selectedDate
     ? (() => {
         const date = new Date(selectedDate + 'T12:00:00')
@@ -183,7 +184,6 @@ export function CalendarPage() {
       })()
     : []
 
-  // Holiday on selected date
   const holidayOnSelectedDate = selectedDate
     ? holidays.find((h) => h.date === selectedDate)
     : null
@@ -217,7 +217,6 @@ export function CalendarPage() {
         </div>
       )}
 
-      {/* Legend */}
       <div className="px-4 pt-2 pb-1 flex gap-3 flex-wrap items-center">
         {activeFamilyMembers.map((m) => (
           <div key={m.id} className="flex items-center gap-1.5">
@@ -248,7 +247,7 @@ export function CalendarPage() {
           dateClick={handleDateClick}
           eventClick={handleEventClick}
           height="auto"
-          dayMaxEvents={3}
+          dayMaxEvents={2}
           eventDisplay="block"
           buttonText={{ dayGridMonth: 'Mês', dayGridWeek: 'Semana', listWeek: 'Lista' }}
           eventContent={(arg) => {
@@ -259,18 +258,8 @@ export function CalendarPage() {
                 <div className="flex items-center gap-0.5 px-1 overflow-hidden">
                   <span className="text-[10px]">🎉</span>
                   <span className="text-[10px] font-medium truncate" style={{ color: '#dc2626' }}>
-                    {arg.event.title}
+                    {arg.event.title.slice(3)}
                   </span>
-                </div>
-              )
-            }
-
-            if (type === 'troca') {
-              return (
-                <div className="flex items-center gap-1 px-1 py-0.5 rounded overflow-hidden w-full"
-                  style={{ backgroundColor: '#f59e0b' }}>
-                  <span className="text-white text-[10px] font-bold">↔</span>
-                  <span className="text-white text-[10px]">Troca</span>
                 </div>
               )
             }
@@ -285,11 +274,8 @@ export function CalendarPage() {
               )
             }
 
-            // Custody / exception event
-            const ev = arg.event.extendedProps.event as CalendarEvent | undefined
+            // Custody event
             const bgColor = arg.event.backgroundColor
-            const parentName = ev && !ev.isException ? getParentName(ev.parentId) : null
-            const initial = parentName ? parentName.charAt(0).toUpperCase() : '?'
             const title = arg.event.title
 
             return (
@@ -297,12 +283,6 @@ export function CalendarPage() {
                 className="flex items-center gap-1 px-1 py-0.5 rounded overflow-hidden w-full"
                 style={{ backgroundColor: bgColor }}
               >
-                <span
-                  className="inline-flex items-center justify-center rounded-full bg-white bg-opacity-30 text-white font-bold flex-shrink-0"
-                  style={{ fontSize: 9, width: 14, height: 14 }}
-                >
-                  {initial}
-                </span>
                 <span className="text-white truncate" style={{ fontSize: 10, fontWeight: 600 }}>
                   {title}
                 </span>
@@ -315,10 +295,9 @@ export function CalendarPage() {
       <Modal
         open={showDayModal}
         onClose={() => { setShowDayModal(false); setSelectedDate(null) }}
-        title={selectedDate ? format(new Date(selectedDate + 'T12:00:00'), 'EEEE, dd/MM/yyyy', { locale: undefined }) : 'Detalhes'}
+        title={selectedDate ? format(new Date(selectedDate + 'T12:00:00'), 'dd/MM/yyyy') : 'Detalhes'}
       >
         <div className="flex flex-col gap-3">
-          {/* Holiday banner */}
           {holidayOnSelectedDate && (
             <div className="flex items-center gap-2 p-2 bg-red-50 rounded-lg border border-red-100">
               <span>🎉</span>
@@ -327,7 +306,6 @@ export function CalendarPage() {
             </div>
           )}
 
-          {/* Custody summary */}
           {custodyForSelectedDate.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Custódia</p>
@@ -345,18 +323,18 @@ export function CalendarPage() {
                       >
                         {initial}
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-gray-900">{name}</p>
                         {children.length > 1 && (
                           <p className="text-xs text-gray-500">{child.fullName}</p>
                         )}
                       </div>
-                      <div
-                        className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full text-white"
+                      <span
+                        className="text-xs font-medium px-2 py-0.5 rounded-full text-white flex-shrink-0"
                         style={{ backgroundColor: color }}
                       >
                         Com a criança
-                      </div>
+                      </span>
                     </div>
                   )
                 })}
@@ -364,7 +342,6 @@ export function CalendarPage() {
             </div>
           )}
 
-          {/* Notes */}
           {notesForSelectedDate.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Notas</p>
