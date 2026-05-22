@@ -67,18 +67,21 @@ export class SupabaseAuthRepo implements IAuthRepository {
     })
     if (error) throw new Error(error.message)
     if (!data.user) throw new Error('Erro ao criar conta')
-    if (!data.session) throw new Error('Erro ao criar sessão. Tenta novamente.')
+    if (!data.session) throw new Error('Confirme o seu email antes de entrar.')
 
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .upsert({ id: data.user.id, display_name: displayName, email })
-      .select()
-      .single()
-    if (profileError) throw new Error(profileError.message)
+    // Construir profile a partir dos dados de auth (trigger cria a row no DB)
+    const profile: Profile = {
+      id: data.user.id,
+      displayName,
+      email,
+      locale: 'pt-PT',
+      timezone: 'Europe/Lisbon',
+      createdAt: data.user.created_at,
+    }
 
-    this._profile = mapProfile(profile)
-    localStorage.setItem(SESSION_KEY, JSON.stringify(this._profile))
-    return this._profile
+    this._profile = profile
+    localStorage.setItem(SESSION_KEY, JSON.stringify(profile))
+    return profile
   }
 
   async logout(): Promise<void> {
