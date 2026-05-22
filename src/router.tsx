@@ -21,7 +21,6 @@ import { AdminPage } from '@/features/admin/pages/AdminPage'
 import { ExpensesPage } from '@/features/expenses/pages/ExpensesPage'
 import { ExpenseNewPage } from '@/features/expenses/pages/ExpenseNewPage'
 import { ExpenseDetailPage } from '@/features/expenses/pages/ExpenseDetailPage'
-import { AuthCallbackPage } from '@/features/auth/pages/AuthCallbackPage'
 
 function Protected({ children }: { children: React.ReactNode }) {
   return (
@@ -35,7 +34,6 @@ export const router = createBrowserRouter([
   { path: '/', element: <Navigate to="/dashboard" replace /> },
   { path: '/login', element: <LoginPage /> },
   { path: '/register', element: <RegisterPage /> },
-  { path: '/auth/callback', element: <AuthCallbackPage /> },
   {
     path: '/onboarding',
     element: (
