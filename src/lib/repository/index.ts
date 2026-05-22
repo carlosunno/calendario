@@ -1,14 +1,16 @@
-import { LocalAuthRepo } from './localStorage/LocalAuthRepo'
-import { LocalChildRepo, LocalRegimeRepo } from './localStorage/LocalChildRepo'
-import { LocalExceptionRepo, LocalNoteRepo, LocalVacationRepo, LocalExpenseRepo } from './localStorage/LocalExceptionRepo'
-import { LocalFamilyRepo } from './localStorage/LocalFamilyRepo'
+import { SupabaseAuthRepo } from './supabase/SupabaseAuthRepo'
+import { SupabaseFamilyRepo } from './supabase/SupabaseFamilyRepo'
+import { SupabaseChildRepo, SupabaseRegimeRepo } from './supabase/SupabaseChildRepo'
+import { SupabaseExceptionRepo } from './supabase/SupabaseExceptionRepo'
+import { SupabaseNoteRepo } from './supabase/SupabaseNoteRepo'
+import { SupabaseVacationRepo } from './supabase/SupabaseVacationRepo'
+import { SupabaseExpenseRepo } from './supabase/SupabaseExpenseRepo'
 
-// Swap these implementations when a real backend is ready
-export const authRepo = new LocalAuthRepo()
-export const familyRepo = new LocalFamilyRepo()
-export const childRepo = new LocalChildRepo()
-export const regimeRepo = new LocalRegimeRepo()
-export const exceptionRepo = new LocalExceptionRepo()
-export const noteRepo = new LocalNoteRepo()
-export const vacationRepo = new LocalVacationRepo()
-export const expenseRepo = new LocalExpenseRepo()
+export const authRepo = new SupabaseAuthRepo()
+export const familyRepo = new SupabaseFamilyRepo()
+export const childRepo = new SupabaseChildRepo()
+export const regimeRepo = new SupabaseRegimeRepo()
+export const exceptionRepo = new SupabaseExceptionRepo()
+export const noteRepo = new SupabaseNoteRepo()
+export const vacationRepo = new SupabaseVacationRepo()
+export const expenseRepo = new SupabaseExpenseRepo()
