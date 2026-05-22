@@ -3,92 +3,42 @@ import type { IAuthRepository } from '../interfaces'
 import { supabase } from '@/lib/supabase/client'
 
 const SESSION_KEY = 'cal_session'
-const TIMEOUT_MS = 12000
-
-function withTimeout<T>(promise: Promise<T>, ms = TIMEOUT_MS): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('O servidor demorou demasiado. Tenta novamente.')), ms)
-    ),
-  ])
-}
-
-function mapProfile(row: Record<string, unknown>): Profile {
-  return {
-    id: row.id as string,
-    displayName: row.display_name as string,
-    email: row.email as string,
-    avatarUrl: row.avatar_url as string | undefined,
-    phone: row.phone as string | undefined,
-    locale: (row.locale as string) ?? 'pt-PT',
-    timezone: (row.timezone as string) ?? 'Europe/Lisbon',
-    createdAt: row.created_at as string,
-  }
-}
 
 export class SupabaseAuthRepo implements IAuthRepository {
   private _profile: Profile | null = null
 
-  constructor() {
-    supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        await this._syncProfile(session.user.id)
-      } else {
-        this._profile = null
-        localStorage.removeItem(SESSION_KEY)
-      }
-    })
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session?.user) this._syncProfile(data.session.user.id)
-    })
-  }
-
-  private async _syncProfile(userId: string): Promise<void> {
-    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
-    if (data) {
-      this._profile = mapProfile(data)
-      localStorage.setItem(SESSION_KEY, JSON.stringify(this._profile))
+  private _profileFromUser(user: { id: string; email?: string; created_at: string; user_metadata?: Record<string, unknown> }): Profile {
+    return {
+      id: user.id,
+      displayName: (user.user_metadata?.displayName as string) ?? (user.email?.split('@')[0] ?? 'Utilizador'),
+      email: user.email ?? '',
+      locale: 'pt-PT',
+      timezone: 'Europe/Lisbon',
+      createdAt: user.created_at,
     }
   }
 
   async login(email: string, password: string): Promise<Profile> {
-    const { data, error } = await withTimeout(supabase.auth.signInWithPassword({ email, password }))
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw new Error(error.message)
 
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', data.user.id)
-      .single()
-    if (profileError) throw new Error(profileError.message)
-
-    this._profile = mapProfile(profile)
-    localStorage.setItem(SESSION_KEY, JSON.stringify(this._profile))
-    return this._profile
+    const profile = this._profileFromUser(data.user)
+    this._profile = profile
+    localStorage.setItem(SESSION_KEY, JSON.stringify(profile))
+    return profile
   }
 
   async register(email: string, password: string, displayName: string): Promise<Profile> {
-    const { data, error } = await withTimeout(supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { displayName } },
-    }))
+    })
     if (error) throw new Error(error.message)
     if (!data.user) throw new Error('Erro ao criar conta')
     if (!data.session) throw new Error('Confirme o seu email antes de entrar.')
 
-    // Construir profile a partir dos dados de auth (trigger cria a row no DB)
-    const profile: Profile = {
-      id: data.user.id,
-      displayName,
-      email,
-      locale: 'pt-PT',
-      timezone: 'Europe/Lisbon',
-      createdAt: data.user.created_at,
-    }
-
+    const profile = this._profileFromUser({ ...data.user, user_metadata: { displayName } })
     this._profile = profile
     localStorage.setItem(SESSION_KEY, JSON.stringify(profile))
     return profile
@@ -131,22 +81,27 @@ export class SupabaseAuthRepo implements IAuthRepository {
       .single()
     if (error) throw new Error(error.message)
 
-    const profile = mapProfile(data)
-    if (this._profile?.id === userId) {
-      this._profile = profile
-      localStorage.setItem(SESSION_KEY, JSON.stringify(profile))
+    const profile: Profile = {
+      id: data.id,
+      displayName: data.display_name,
+      email: data.email,
+      avatarUrl: data.avatar_url,
+      phone: data.phone,
+      locale: data.locale,
+      timezone: data.timezone,
+      createdAt: data.created_at,
     }
+    this._profile = profile
+    localStorage.setItem(SESSION_KEY, JSON.stringify(profile))
     return profile
   }
 
-  // Admin-only: not available in Supabase implementation
   getAllUsers(): Array<Profile & { email: string; password: string }> {
     const current = this.getCurrentUser()
     return current ? [{ ...current, password: '' }] : []
   }
 
   async deleteUser(_userId: string): Promise<void> {
-    // Requires service role — not exposed in frontend
     throw new Error('Operação não disponível no modo Supabase')
   }
 }
