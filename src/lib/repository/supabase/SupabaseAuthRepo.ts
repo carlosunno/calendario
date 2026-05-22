@@ -3,6 +3,16 @@ import type { IAuthRepository } from '../interfaces'
 import { supabase } from '@/lib/supabase/client'
 
 const SESSION_KEY = 'cal_session'
+const TIMEOUT_MS = 12000
+
+function withTimeout<T>(promise: Promise<T>, ms = TIMEOUT_MS): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('O servidor demorou demasiado. Tenta novamente.')), ms)
+    ),
+  ])
+}
 
 function mapProfile(row: Record<string, unknown>): Profile {
   return {
@@ -44,7 +54,7 @@ export class SupabaseAuthRepo implements IAuthRepository {
   }
 
   async login(email: string, password: string): Promise<Profile> {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await withTimeout(supabase.auth.signInWithPassword({ email, password }))
     if (error) throw new Error(error.message)
 
     const { data: profile, error: profileError } = await supabase
@@ -60,11 +70,11 @@ export class SupabaseAuthRepo implements IAuthRepository {
   }
 
   async register(email: string, password: string, displayName: string): Promise<Profile> {
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await withTimeout(supabase.auth.signUp({
       email,
       password,
       options: { data: { displayName } },
-    })
+    }))
     if (error) throw new Error(error.message)
     if (!data.user) throw new Error('Erro ao criar conta')
     if (!data.session) throw new Error('Confirme o seu email antes de entrar.')
