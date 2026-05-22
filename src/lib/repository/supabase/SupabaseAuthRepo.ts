@@ -63,12 +63,20 @@ export class SupabaseAuthRepo implements IAuthRepository {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { displayName } },
+      options: {
+        data: { displayName },
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
     })
     if (error) throw new Error(error.message)
     if (!data.user) throw new Error('Erro ao criar conta')
 
-    // Upsert profile (trigger also creates it, but ensure displayName is set)
+    // Se não há sessão, o email de confirmação foi enviado
+    if (!data.session) {
+      throw new Error('EMAIL_CONFIRMATION_PENDING')
+    }
+
+    // Com sessão activa: upsert do profile (o trigger já o cria, mas garante o displayName)
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .upsert({ id: data.user.id, display_name: displayName, email })
